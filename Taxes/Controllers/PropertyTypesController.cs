@@ -17,7 +17,7 @@ namespace Taxes.Controllers
         // GET: PropertyTypes
         public ActionResult Index()
         {
-            return View(db.PropertyTypes.ToList());
+            return View(db.PropertyTypes.OrderBy(pt => pt.Description).ToList());
         }
 
         // GET: PropertyTypes/Details/5
@@ -46,15 +46,30 @@ namespace Taxes.Controllers
         // más información vea http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Create([Bind(Include = "PropertyTypeId,Description")] PropertyType propertyType)
+        public ActionResult Create([Bind(Include = "PropertyTypeId,Description,Notes")] PropertyType propertyType)
         {
             if (ModelState.IsValid)
             {
                 db.PropertyTypes.Add(propertyType);
-                db.SaveChanges();
-                return RedirectToAction("Index");
+                try
+                {
+                    db.SaveChanges();
+                    return RedirectToAction("Index");
+                }
+                catch (Exception ex)
+                {
+                    if (ex.InnerException != null &&
+                        ex.InnerException.InnerException != null &&
+                        ex.InnerException.InnerException.Message.Contains("_Index"))
+                    {
+                        ModelState.AddModelError(string.Empty, "Hay un registro con el mismo valor");
+                    }
+                    else
+                    {
+                        ModelState.AddModelError(string.Empty, ex.Message);
+                    }
+                }                
             }
-
             return View(propertyType);
         }
 
@@ -72,19 +87,34 @@ namespace Taxes.Controllers
             }
             return View(propertyType);
         }
-
         // POST: PropertyTypes/Edit/5
         // Para protegerse de ataques de publicación excesiva, habilite las propiedades específicas a las que desea enlazarse. Para obtener 
         // más información vea http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Edit([Bind(Include = "PropertyTypeId,Description")] PropertyType propertyType)
+        public ActionResult Edit([Bind(Include = "PropertyTypeId,Description,Notes")] PropertyType propertyType)
         {
             if (ModelState.IsValid)
             {
                 db.Entry(propertyType).State = EntityState.Modified;
-                db.SaveChanges();
-                return RedirectToAction("Index");
+                try
+                {
+                    db.SaveChanges();
+                    return RedirectToAction("Index");
+                }
+                catch (Exception ex)
+                {
+                    if (ex.InnerException != null &&
+                        ex.InnerException.InnerException != null &&
+                        ex.InnerException.InnerException.Message.Contains("_Index"))
+                    {
+                        ModelState.AddModelError(string.Empty, "Hay un registro con el mismo valor");
+                    }
+                    else
+                    {
+                        ModelState.AddModelError(string.Empty, ex.Message);
+                    }
+                };
             }
             return View(propertyType);
         }
@@ -96,7 +126,8 @@ namespace Taxes.Controllers
             {
                 return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
             }
-            PropertyType propertyType = db.PropertyTypes.Find(id);
+            var propertyType = db.PropertyTypes.Find(id);
+
             if (propertyType == null)
             {
                 return HttpNotFound();
